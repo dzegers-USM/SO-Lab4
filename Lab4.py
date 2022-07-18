@@ -17,7 +17,7 @@ class Person(threading.Thread):
         # Write Queues #
         self.patio_queue = queueList[0]         # PatioCentral.txt
         self.room_queue = queueList[self.room]  # Sala{room}.txt
-        self.exit_queue = queueList[9]          # Salida.txt
+        self.exit_queue = queueList[5]          # Salida.txt
 
         # Semaphores #
         self.line_sem = semList[self.room - 1]
@@ -34,39 +34,34 @@ class Movie():
         self.duration = duration
         self.barrier = threading.Barrier(capacity)
         self.lock = threading.Lock()
-        self.ready = True
 
 def patio_central(person):
-    person.time = datetime.datetime.now()
+    person.time = datetime.datetime.now()  # Se registra tiempo de llegada al patio
 
 def fila(person):
     person.line_sem.acquire()
-    line = "Persona {}, {}, Sala {}, {}"
+    printOut = "Persona {}, {}, Sala {}, {}"
     cur_time = datetime.datetime.now()
-    person.patio_queue.put(line.format(person.id, person.time, person.room, cur_time))
+    person.patio_queue.put(printOut.format(person.id, person.time, person.room, cur_time))
     person.time = cur_time
 
 def sala(person):
-    while not person.movie.ready:
-        time.sleep(1)
     person.room_sem.acquire()
     person.line_sem.release()
-    line = "Persona {}, {}, {}"
-    person.room_queue.put(line.format(person.id, person.time, datetime.datetime.now()))
+    printOut = "Persona {}, {}, {}"
+    person.room_queue.put(printOut.format(person.id, person.time, datetime.datetime.now()))
     person.movie.barrier.wait()  # Esperar a que se llene la sala
-    if person.movie.ready:       # Se cierra la entrada hasta que salgan todos de la sala
-        person.movie.ready = False
+    # TODO: Esto va a requerir un timeout, eventualmente no habrá suficiente gente como para romper la barrera, causando un bucle infinito
     person.time = datetime.datetime.now()
 
 def salida(person):
-    while(datetime.datetime.now() - person.time < person.movie.duration):
+    time_diff = datetime.datetime.now() - person.time
+    while(time_diff.seconds < person.movie.duration):
+        time_diff = datetime.datetime.now() - person.time
         time.sleep(1)
     person.room_sem.release()
-    line = "Persona {}, {}"
-    person.exit_queue.put(line.format(person.id, datetime.datetime.now()))
-    person.movie.barrier.wait()
-    if not person.movie.ready:  # Habiendo salido todos, se abre la entrada
-        person.movie.ready = True
+    printOut = "Persona {}, {}"
+    person.exit_queue.put(printOut.format(person.id, datetime.datetime.now()))
 
 
 
@@ -96,4 +91,14 @@ movies.append(Movie(7, 12))  # Thor
 movies.append(Movie(6, 25))  # Lightyear
 movies.append(Movie(8, 20))  # Doctor Strange
 
+people = []
+for i in range(100):
+    people.append(Person(i + 1, queueList, semList, movies))
 
+for person in people:
+    person.start()
+
+for person in people:
+    person.join()
+
+print("Done")
