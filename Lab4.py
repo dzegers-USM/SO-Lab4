@@ -50,8 +50,10 @@ def sala(person):
     person.line_sem.release()
     printOut = "Persona {}, {}, {}"
     person.room_queue.put(printOut.format(person.id, person.time, datetime.datetime.now()))
-    person.movie.barrier.wait()  # Esperar a que se llene la sala
-    # TODO: Esto va a requerir un timeout, eventualmente no habrá suficiente gente como para romper la barrera, causando un bucle infinito
+    try:
+        person.movie.barrier.wait(timeout=10)  # Esperar a que se llene la sala
+    except threading.BrokenBarrierError:
+        pass
     person.time = datetime.datetime.now()
 
 def salida(person):
@@ -62,8 +64,6 @@ def salida(person):
     person.room_sem.release()
     printOut = "Persona {}, {}"
     person.exit_queue.put(printOut.format(person.id, datetime.datetime.now()))
-
-
 
 # Write queues #
 # queueList[0] -> patio
@@ -91,6 +91,7 @@ movies.append(Movie(7, 12))  # Thor
 movies.append(Movie(6, 25))  # Lightyear
 movies.append(Movie(8, 20))  # Doctor Strange
 
+# Main thread #
 people = []
 for i in range(100):
     people.append(Person(i + 1, queueList, semList, movies))
@@ -101,4 +102,7 @@ for person in people:
 for person in people:
     person.join()
 
-print("Done")
+fnames = ["PatioCentral.txt", "Sala1.txt", "Sala2.txt", "Sala3.txt", "Sala4.txt", "Salida.txt"]
+for i, q in enumerate(queueList):
+    while not q.empty():
+        print(q.get())
