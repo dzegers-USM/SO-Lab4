@@ -119,6 +119,6 @@ fnames = ["PatioCentral.txt", "Sala1.txt", "Sala2.txt",
           "Sala3.txt", "Sala4.txt", "Salida.txt"]
 for i, q in enumerate(queueList):
     with open("out/" + fnames[i], 'w') as f:
-        while not q.empty():
+        while q.qsize() != 0:
             f.write(q.get())
 sys.exit(0)
