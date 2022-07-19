@@ -1,9 +1,10 @@
-from concurrent.futures import thread
 import threading
 import queue
 import random
-import time
-import datetime
+import time, datetime
+import sys, os, errno
+
+TIMEOUT = 10
 
 class Person(threading.Thread):
     def __init__(self, id, queueList, semList, movies):
@@ -33,14 +34,13 @@ class Movie():
     def __init__(self, duration, capacity):
         self.duration = duration
         self.barrier = threading.Barrier(capacity)
-        self.lock = threading.Lock()
 
 def patio_central(person):
     person.time = datetime.datetime.now()  # Se registra tiempo de llegada al patio
 
 def fila(person):
     person.line_sem.acquire()
-    printOut = "Persona {}, {}, Sala {}, {}"
+    printOut = "Persona {}, {}, Sala {}, {}\n"
     cur_time = datetime.datetime.now()
     person.patio_queue.put(printOut.format(person.id, person.time, person.room, cur_time))
     person.time = cur_time
@@ -48,10 +48,10 @@ def fila(person):
 def sala(person):
     person.room_sem.acquire()
     person.line_sem.release()
-    printOut = "Persona {}, {}, {}"
+    printOut = "Persona {}, {}, {}\n"
     person.room_queue.put(printOut.format(person.id, person.time, datetime.datetime.now()))
     try:
-        person.movie.barrier.wait(timeout=10)  # Esperar a que se llene la sala
+        person.movie.barrier.wait(timeout=TIMEOUT)  # Esperar a que se llene la sala
     except threading.BrokenBarrierError:
         pass
     person.time = datetime.datetime.now()
@@ -62,7 +62,7 @@ def salida(person):
         time_diff = datetime.datetime.now() - person.time
         time.sleep(1)
     person.room_sem.release()
-    printOut = "Persona {}, {}"
+    printOut = "Persona {}, {}\n"
     person.exit_queue.put(printOut.format(person.id, datetime.datetime.now()))
 
 # Write queues #
@@ -102,7 +102,17 @@ for person in people:
 for person in people:
     person.join()
 
-fnames = ["PatioCentral.txt", "Sala1.txt", "Sala2.txt", "Sala3.txt", "Sala4.txt", "Salida.txt"]
+try:
+    os.mkdir("out")
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        print(e)
+        sys.exit(e.errno)
+
+fnames = ["PatioCentral.txt", "Sala1.txt", "Sala2.txt",
+          "Sala3.txt", "Sala4.txt", "Salida.txt"]
 for i, q in enumerate(queueList):
-    while not q.empty():
-        print(q.get())
+    with open("out/" + fnames[i], 'w') as f:
+        while not q.empty():
+            f.write(q.get())
+sys.exit(0)

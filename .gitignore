@@ -1,2 +1,5 @@
 # Enunciado #
 *.pdf
+
+# Output #
+./out/*
