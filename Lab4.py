@@ -4,7 +4,7 @@ import random
 import time, datetime
 import sys, os, errno
 
-TIMEOUT = 10
+TIMEOUT = 10  # Segundos
 
 class Person(threading.Thread):
     def __init__(self, id, queueList, semList, movies):
@@ -36,22 +36,27 @@ class Movie():
         self.barrier = threading.Barrier(capacity)
 
 def patio_central(person):
-    person.time = datetime.datetime.now()  # Se registra tiempo de llegada al patio
+    # No hay limitaciones al flujo de gente por el patio central, luego
+    # solo necesitamos registrar el tiempo de llegada
+    person.time = datetime.datetime.now()
 
 def fila(person):
     person.line_sem.acquire()
     printOut = "Persona {}, {}, Sala {}, {}\n"
     cur_time = datetime.datetime.now()
-    person.patio_queue.put(printOut.format(person.id, person.time, person.room, cur_time))
+    person.patio_queue.put(printOut.format(person.id, person.time.time(),
+                                           person.room, cur_time.time()))
     person.time = cur_time
 
 def sala(person):
     person.room_sem.acquire()
     person.line_sem.release()
     printOut = "Persona {}, {}, {}\n"
-    person.room_queue.put(printOut.format(person.id, person.time, datetime.datetime.now()))
+    cur_time = datetime.datetime.now()
+    person.room_queue.put(printOut.format(person.id, person.time.time(),
+                                          cur_time.time()))
     try:
-        person.movie.barrier.wait(timeout=TIMEOUT)  # Esperar a que se llene la sala
+        person.movie.barrier.wait(timeout=TIMEOUT)
     except threading.BrokenBarrierError:
         pass
     person.time = datetime.datetime.now()
@@ -63,7 +68,8 @@ def salida(person):
         time.sleep(1)
     person.room_sem.release()
     printOut = "Persona {}, {}\n"
-    person.exit_queue.put(printOut.format(person.id, datetime.datetime.now()))
+    cur_time = datetime.datetime.now()
+    person.exit_queue.put(printOut.format(person.id, cur_time.time()))
 
 # Write queues #
 # queueList[0] -> patio
